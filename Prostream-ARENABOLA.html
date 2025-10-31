@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modern Stream Player (Shaka Engine v4.1.1)</title>
+    
+    <!-- Shaka Player UI compiled library and CSS - Version 4.1.1 from cdnjs -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.1.1/controls.min.css" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.1.1/shaka-player.ui.min.js" crossorigin="anonymous"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Core Styling --- */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0f0f0f; /* YouTube's dark background */
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        #container {
+            max-width: 900px;
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            background-color: #000;
+            position: relative; /* Added for watermark positioning */
+        }
+
+        [data-shaka-player-container] {
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* --- Watermark Styling --- */
+        .watermark {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 28px;
+            font-weight: 500;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 10;
+            
+        }
+        .watermark.visible {
+            display: block;
+        }
+
+        /* --- Debug Box Styling --- */
+        #debug-box {
+            width: 100%;
+            max-width: 900px;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Roboto Mono', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+        #debug-box h3 { margin-top: 0; color: #fff; }
+        .error { color: #ff4757; }
+        .success { color: #2ed573; }
+        .info { color: #74c0fc; }
+
+        /* --- YouTube-Style Shaka Player UI Overrides --- */
+        .shaka-video-container .shaka-bottom-controls,
+        .shaka-video-container .shaka-top-controls {
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            backdrop-filter: blur(5px);
+            padding: 10px 20px;
+        }
+        .shaka-video-container .shaka-top-controls { background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent); }
+
+        /* Buttons - YouTube-like icons and feel */
+        .shaka-video-container .shaka-play-button,
+        .shaka-video-container .shaka-mute-button,
+        .shaka-video-container .shaka-captions-button,
+        .shaka-video-container .shaka-overflow-menu-button,
+        .shaka-video-container .shaka-fullscreen-button,
+        .shaka-video-container .shaka-pip-button {
+            background: none !important;
+            color: #fff !important;
+            font-size: 24px !important;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .shaka-video-container .shaka-play-button:hover,
+        .shaka-video-container .shaka-mute-button:hover,
+        .shaka-video-container .shaka-captions-button:hover,
+        .shaka-video-container .shaka-overflow-menu-button:hover,
+        .shaka-video-container .shaka-fullscreen-button:hover,
+        .shaka-video-container .shaka-pip-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* Seek Bar - YouTube's red progress bar */
+        .shaka-video-container .shaka-seek-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        .shaka-video-container .shaka-seek-bar .shaka-played-range,
+        .shaka-video-container .shaka-seek-bar .shaka-ad-breaks {
+            background: #ff0000; /* YouTube Red */
+        }
+        .shaka-video-container .shaka-seek-bar .shaka-buffered-range {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        .shaka-video-container .shaka-seek-bar-container:hover .shaka-seek-bar {
+            height: 6px;
+        }
+        .shaka-video-container .shaka-seek-bar .shaka-thumb {
+            background: #ff0000;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .shaka-video-container .shaka-seek-bar-container:hover .shaka-thumb {
+            opacity: 1;
+        }
+
+        /* Volume Bar */
+        .shaka-video-container .shaka-volume-bar {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .shaka-video-container .shaka-volume-bar .shaka-played-range {
+            background: #ff0000;
+        }
+
+        /* Overflow Menu */
+        .shaka-video-container .shaka-overflow-menu {
+            background: rgba(28, 28, 28, 0.95);
+            border-radius: 8px;
+            border: none;
+            backdrop-filter: blur(10px);
+        }
+        .shaka-video-container .shaka-overflow-menu li {
+            color: #fff;
+            transition: background 0.2s;
+            padding: 10px 15px;
+        }
+        .shaka-video-container .shaka-overflow-menu li:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .shaka-video-container .shaka-overflow-menu li[aria-checked="true"] {
+            color: #ff0000;
+        }
+
+        /* Time & Duration Display */
+        .shaka-video-container .shaka-time-and-duration {
+            color: #fff;
+            font-size: 13px;
+            text-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        /* Hide the big center play button to match YouTube's minimal look */
+        .shaka-video-container .shaka-play-button-container {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div data-shaka-player-container>
+            <video data-shaka-player id="video"></video>
+            <!-- Watermark Element - placed inside the video container -->
+            <div class="watermark">PROSTREAM-ARENA BOLA</div>
+        </div>
+    </div>
+
+    <div id="debug-box">
+        <h3>Debug Information</h3>
+        <div id="debug-content">Initializing player...</div>
+    </div>
+
+    <script>
+        // --- UPDATED CONFIGURATION ---
+        const streamURL = "https://l01.dp.sooka.my/5099/linear/index.mpd";
+        const npointURL = "https://api.npoint.io/c34d2cdf37087410deae"; // <-- ganti dgn nPoint kau
+        // -----------------------------
+
+        const debugContent = document.getElementById('debug-content');
+
+        function log(message, type = 'info') {
+            debugContent.innerHTML += `<span class="${type}">${message}</span>\n`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Ambil token rawak daripada format [{data:{token:"..."}}]
+        async function getRandomToken() {
+          try {
+            log('Fetching new token...');
+            const res = await fetch(npointURL + "?t=" + Date.now());
+            const list = await res.json();
+
+            if (!Array.isArray(list)) throw new Error("Format nPoint mesti array [{data:{token}}].");
+
+            // tapis hanya yang ada data.token
+            const validTokens = list
+              .map(item => item?.data?.token)
+              .filter(Boolean);
+
+            if (validTokens.length === 0) throw new Error("Tiada token dijumpai dalam nPoint.");
+
+            const randomIndex = Math.floor(Math.random() * validTokens.length);
+            const token = validTokens[randomIndex];
+            log(`🎟️ Token fetched: ${token.substring(0, 25)}...`, 'success');
+            return token;
+          } catch (err) {
+            log(`Gagal fetch token: ${err.message}`, 'error');
+            return "";
+          }
+        }
+
+        async function initPlayer() {
+          let token = await getRandomToken();
+          if (!token) {
+            log("Gagal ambil token dari nPoint. Semak format JSON.", 'error');
+            return;
+          }
+
+          const video = document.querySelector("video");
+          const ui = video["ui"];
+          const controls = ui.getControls();
+          const player = controls.getPlayer();
+
+          player.configure({
+            drm: {
+              clearKeys: {
+                "57833c900c4c437f82daf6785eb6ef36":"7bf4663e43cdc277b4ae18219c81d2a1",
+                "fb06bb8266fb4a998e7c4e7e90461556":"52242587d8106c4b3ed596c7a56b4e28"
+              }
+            }
+          });
+
+          // masukkan token dalam request header
+          player.getNetworkingEngine().registerRequestFilter((type, request) => {
+            if (
+              type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+              type === shaka.net.NetworkingEngine.RequestType.SEGMENT
+            ) {
+              request.headers["authorization"] = "Bearer " + token;
+            }
+          });
+
+          // kalau stream gagal load, cuba token lain
+          async function tryLoadStream(retryCount = 0) {
+            try {
+              log(`Attempting to load stream (Attempt ${retryCount + 1})...`);
+              await player.load(streamURL);
+              log('✅ Stream loaded successfully!', 'success');
+            } catch (e) {
+              log(`❌ Error loading stream (Attempt ${retryCount + 1}): ${e.message}`, 'error');
+              if (retryCount < 3) {
+                log('🔁 Cuba semula dengan token lain...', 'info');
+                token = await getRandomToken();
+                if (token) {
+                    await tryLoadStream(retryCount + 1);
+                } else {
+                    log('FATAL: Stream failed. Could not get a new token.', 'error');
+                }
+              } else {
+                log("Stream gagal dimuat selepas beberapa percubaan.", 'error');
+              }
+            }
+          }
+
+          await tryLoadStream();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          if (shaka.Player.isBrowserSupported()) {
+            log('Browser is supported. Starting player...');
+            initPlayer();
+          } else {
+            log("Shaka Player tidak disokong dalam pelayar ini.", 'error');
+          }
+        });
+
+        // --- Watermark Logic ---
+        const watermark = document.querySelector('.watermark');
+        const container = document.getElementById('container');
+
+        function toggleWatermark() {
+            if (document.fullscreenElement === container) {
+                watermark.classList.add('visible');
+            } else {
+                watermark.classList.remove('visible');
+            }
+        }
+
+        document.addEventListener('fullscreenchange', toggleWatermark);
+
+    </script>
+
+    <!-- --- Anti-Debug Script --- -->
+    <script>
+        (function() {
+            // NOTE: These are client-side deterrents and can be bypassed.
+            // They are not a substitute for proper server-side security.
+
+            // Disable right-click context menu
+            document.addEventListener('contextmenu', e => {
+                e.preventDefault();
+            });
+
+            // Disable common keyboard shortcuts for developer tools
+            document.addEventListener('keydown', e => {
+                // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+                if (e.keyCode === 123 || 
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) || 
+                    (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
