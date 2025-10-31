@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Modern Stream Player (Shaka Engine v4.1.1)</title>
+    <title>Modern Stream Player (Shaka Engine v4.16.7)</title>
     
-    <!-- Shaka Player UI compiled library and CSS - Version 4.1.1 from cdnjs -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.1.1/controls.min.css" crossorigin="anonymous">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.1.1/shaka-player.ui.min.js" crossorigin="anonymous"></script>
+    <!-- Shaka Player UI compiled library and CSS - Version 4.16.7 from cdnjs -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.7/controls.min.css" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.7/shaka-player.ui.min.js" crossorigin="anonymous"></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -14,29 +14,25 @@
         /* --- Core Styling --- */
         body {
             font-family: 'Roboto', sans-serif;
-            background-color: #0f0f0f; /* YouTube's dark background */
+            background-color: #000; /* Changed to pure black for a cleaner look */
             color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
             margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* Prevents scrollbars */
         }
 
         #container {
-            max-width: 900px;
             width: 100%;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            background-color: #000;
+            height: 100%;
             position: relative; /* Added for watermark positioning */
         }
 
         [data-shaka-player-container] {
             width: 100%;
-            aspect-ratio: 16/9;
+            height: 100%;
         }
 
         video {
@@ -56,29 +52,10 @@
             text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
             pointer-events: none;
             z-index: 10;
-            
         }
         .watermark.visible {
             display: block;
         }
-
-        /* --- Debug Box Styling --- */
-        #debug-box {
-            width: 100%;
-            max-width: 900px;
-            background-color: #1a1a1a;
-            border: 1px solid #333;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Roboto Mono', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 14px;
-        }
-        #debug-box h3 { margin-top: 0; color: #fff; }
-        .error { color: #ff4757; }
-        .success { color: #2ed573; }
-        .info { color: #74c0fc; }
 
         /* --- YouTube-Style Shaka Player UI Overrides --- */
         .shaka-video-container .shaka-bottom-controls,
@@ -189,28 +166,16 @@
         </div>
     </div>
 
-    <div id="debug-box">
-        <h3>Debug Information</h3>
-        <div id="debug-content">Initializing player...</div>
-    </div>
-
     <script>
         // --- UPDATED CONFIGURATION ---
         const streamURL = "https://l01.dp.sooka.my/5099/linear/index.mpd";
         const npointURL = "https://api.npoint.io/c34d2cdf37087410deae"; // <-- ganti dgn nPoint kau
         // -----------------------------
 
-        const debugContent = document.getElementById('debug-content');
-
-        function log(message, type = 'info') {
-            debugContent.innerHTML += `<span class="${type}">${message}</span>\n`;
-            console.log(`[${type.toUpperCase()}] ${message}`);
-        }
-
         // Ambil token rawak daripada format [{data:{token:"..."}}]
         async function getRandomToken() {
           try {
-            log('Fetching new token...');
+            console.log('Fetching new token...');
             const res = await fetch(npointURL + "?t=" + Date.now());
             const list = await res.json();
 
@@ -225,10 +190,10 @@
 
             const randomIndex = Math.floor(Math.random() * validTokens.length);
             const token = validTokens[randomIndex];
-            log(`🎟️ Token fetched: ${token.substring(0, 25)}...`, 'success');
+            console.log(`🎟️ Token fetched: ${token.substring(0, 25)}...`);
             return token;
           } catch (err) {
-            log(`Gagal fetch token: ${err.message}`, 'error');
+            console.error(`Gagal fetch token: ${err.message}`);
             return "";
           }
         }
@@ -236,12 +201,12 @@
         async function initPlayer() {
           let token = await getRandomToken();
           if (!token) {
-            log("Gagal ambil token dari nPoint. Semak format JSON.", 'error');
+            console.error("Gagal ambil token dari nPoint. Semak format JSON.");
             return;
           }
 
           const video = document.querySelector("video");
-          const ui = video["ui"];
+          const ui = video['ui'];
           const controls = ui.getControls();
           const player = controls.getPlayer();
 
@@ -267,21 +232,21 @@
           // kalau stream gagal load, cuba token lain
           async function tryLoadStream(retryCount = 0) {
             try {
-              log(`Attempting to load stream (Attempt ${retryCount + 1})...`);
+              console.log(`Attempting to load stream (Attempt ${retryCount + 1})...`);
               await player.load(streamURL);
-              log('✅ Stream loaded successfully!', 'success');
+              console.log('✅ Stream loaded successfully!');
             } catch (e) {
-              log(`❌ Error loading stream (Attempt ${retryCount + 1}): ${e.message}`, 'error');
+              console.error(`❌ Error loading stream (Attempt ${retryCount + 1}): ${e.message}`);
               if (retryCount < 3) {
-                log('🔁 Cuba semula dengan token lain...', 'info');
+                console.log('🔁 Cuba semula dengan token lain...');
                 token = await getRandomToken();
                 if (token) {
                     await tryLoadStream(retryCount + 1);
                 } else {
-                    log('FATAL: Stream failed. Could not get a new token.', 'error');
+                    console.error('FATAL: Stream failed. Could not get a new token.');
                 }
               } else {
-                log("Stream gagal dimuat selepas beberapa percubaan.", 'error');
+                console.error("Stream gagal dimuat selepas beberapa percubaan.");
               }
             }
           }
@@ -291,14 +256,27 @@
 
         document.addEventListener("DOMContentLoaded", () => {
           if (shaka.Player.isBrowserSupported()) {
-            log('Browser is supported. Starting player...');
+            console.log('Browser is supported. Starting player...');
             initPlayer();
           } else {
-            log("Shaka Player tidak disokong dalam pelayar ini.", 'error');
+            console.error("Shaka Player tidak disokong dalam pelayar ini.");
           }
         });
 
-        // --- Watermark Logic ---
+        // --- Fullscreen Logic for Android Web Viewer ---
+        const videoContainer = document.querySelector('[data-shaka-player-container]');
+
+        videoContainer.addEventListener('fullscreenchange', () => {
+            // When the user clicks the fullscreen button, Shaka Player will try to go fullscreen.
+            // We catch this event and change the page title to send a signal to the app.
+            if (document.fullscreenElement) {
+                document.title = "fullscreen_request";
+            } else {
+                document.title = "fullscreen_exit";
+            }
+        });
+
+        // --- Watermark Logic (Optional, but kept from original) ---
         const watermark = document.querySelector('.watermark');
         const container = document.getElementById('container');
 
@@ -317,17 +295,8 @@
     <!-- --- Anti-Debug Script --- -->
     <script>
         (function() {
-            // NOTE: These are client-side deterrents and can be bypassed.
-            // They are not a substitute for proper server-side security.
-
-            // Disable right-click context menu
-            document.addEventListener('contextmenu', e => {
-                e.preventDefault();
-            });
-
-            // Disable common keyboard shortcuts for developer tools
+            document.addEventListener('contextmenu', e => e.preventDefault());
             document.addEventListener('keydown', e => {
-                // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
                 if (e.keyCode === 123 || 
                     (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) || 
                     (e.ctrlKey && e.key === 'u')) {
